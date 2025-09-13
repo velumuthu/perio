@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "Abstract image showing a futuristic dental analysis interface, representing AI in healthcare.",
+      "imageUrl": "https://picsum.photos/seed/perioclassify-hero/1200/600",
+      "imageHint": "technology abstract"
+    },
+    {
+      "id": "symptom-red-gums",
+      "description": "Red, swollen gums",
+      "imageUrl": "https://picsum.photos/seed/symptom-red/600/400",
+      "imageHint": "gums inflammation"
+    },
+    {
+      "id": "symptom-bleeding-gums",
+      "description": "Bleeding while brushing",
+      "imageUrl": "https://picsum.photos/seed/symptom-bleeding/600/400",
+      "imageHint": "gums bleeding"
+    },
+    {
+      "id": "symptom-receding-gums",
+      "description": "Receding gums",
+      "imageUrl": "https://picsum.photos/seed/symptom-receding/600/400",
+      "imageHint": "gums recession"
+    },
+    {
+      "id": "symptom-pus",
+      "description": "Pus between teeth",
+      "imageUrl": "https://picsum.photos/seed/symptom-pus/600/400",
+      "imageHint": "dental abscess"
+    },
+    {
+      "id": "symptom-loose-teeth",
+      "description": "Loose or shifting teeth",
+      "imageUrl": "https://picsum.photos/seed/symptom-loose/600/400",
+      "imageHint": "loose tooth"
+    },
+    {
+      "id": "symptom-bad-breath",
+      "description": "Bad breath (halitosis)",
+      "imageUrl": "https://picsum.photos/seed/symptom-breath/600/400",
+      "imageHint": "person talking"
+    },
+    {
+      "id": "symptom-gum-pain",
+      "description": "Pain or tenderness",
+      "imageUrl": "https://picsum.photos/seed/symptom-pain/600/400",
+      "imageHint": "person pain"
+    }
+  ]
+}
