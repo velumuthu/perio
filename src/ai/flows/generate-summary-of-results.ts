@@ -78,7 +78,7 @@ const summaryPrompt = ai.definePrompt({
   Generate the summary now.
 
   Summary:`,
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
 });
 
 const generateSummaryOfResultsFlow = ai.defineFlow(

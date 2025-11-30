@@ -115,7 +115,7 @@ Determine if periodontal disease is present.
 Then, classify the periodontal health status as one of 'non_diabetic_healthy', 'diabetic_mild', 'diabetic_moderate', 'diabetic_severe', or 'other_gums_issues'.
 
 If you classify the issue as 'other_gums_issues', you MUST provide a brief explanation in the 'otherIssuesDescription' field (e.g., "Signs of oral thrush" or "Possible canker sore").`,
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
 });
 
 const classifyPatientDetailsFlow = ai.defineFlow(
