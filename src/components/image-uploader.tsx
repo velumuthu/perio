@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, ChangeEvent, DragEvent } from 'react';
-import { UploadCloud, CheckCircle, XCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { CameraDialog } from './camera-dialog';
 
 interface ImageUploaderProps {
   onUpload: (files: File[]) => void;
@@ -15,7 +16,7 @@ export function ImageUploader({ onUpload, disabled }: ImageUploaderProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   const handleFiles = useCallback(
-    (files: FileList | null) => {
+    (files: FileList | File[] | null) => {
       if (files) {
         const fileArray = Array.from(files).filter(
           (file) =>
@@ -32,6 +33,10 @@ export function ImageUploader({ onUpload, disabled }: ImageUploaderProps) {
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     handleFiles(e.target.files);
+  };
+
+  const handleCameraCapture = (file: File) => {
+    handleFiles([file]);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -79,23 +84,36 @@ export function ImageUploader({ onUpload, disabled }: ImageUploaderProps) {
         <p className="mb-2 font-semibold">
           Drag & drop your dental images here
         </p>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-muted-foreground mb-6">
           (X-rays, clinical photos, HEIC/HEIF)
         </p>
-        <Button asChild variant="outline" disabled={disabled}>
-          <label htmlFor="file-upload">
-            Browse Files
-            <input
-              id="file-upload"
-              type="file"
-              multiple
-              accept="image/*,.heic,.heif"
-              className="sr-only"
-              onChange={handleInputChange}
-              disabled={disabled}
-            />
-          </label>
-        </Button>
+        
+        <div className="flex flex-wrap justify-center gap-4">
+          <Button asChild variant="outline" disabled={disabled} className="cursor-pointer">
+            <label htmlFor="file-upload">
+              Browse Files
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                accept="image/*,.heic,.heif"
+                className="sr-only"
+                onChange={handleInputChange}
+                disabled={disabled}
+              />
+            </label>
+          </Button>
+          
+          <CameraDialog 
+            onCapture={handleCameraCapture} 
+            trigger={
+              <Button variant="default" disabled={disabled} className="flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                Take Photo
+              </Button>
+            }
+          />
+        </div>
       </div>
     </div>
   );

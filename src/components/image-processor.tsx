@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { ImageState } from '@/types';
 import { ImageUploader } from '@/components/image-uploader';
 import { ResultCard } from '@/components/result-card';
@@ -8,10 +8,11 @@ import { SymptomSelector } from '@/components/symptom-selector';
 import { Button } from '@/components/ui/button';
 import { processImage, getSummary } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { LoaderCircle, FileWarning } from 'lucide-react';
+import { LoaderCircle, FileWarning, History, Trash2, Camera } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { Card, CardContent } from './ui/card';
 import { GenerateSummaryOfResultsOutput } from '@/ai/flows/generate-summary-of-results';
+import { saveImageLocally, getAllLocalImages, deleteLocalImage, LocalImage } from '@/lib/local-storage';
 
 const convertHeicToJpeg = async (file: File): Promise<File> => {
   const heic2any = (await import('heic2any')).default;
@@ -50,24 +51,50 @@ const fileToDataURL = (file: File): Promise<string> => {
 
 export function ImageProcessor() {
   const [images, setImages] = useState<ImageState[]>([]);
+  const [localHistory, setLocalHistory] = useState<LocalImage[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [summary, setSummary] =
     useState<GenerateSummaryOfResultsOutput | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-  const [isProcessing, startProcessing] = useTransition();
-  const [isSummaryLoading, startSummaryLoading] = useTransition();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleImageUpload = (files: File[]) => {
+  const loadHistory = async () => {
+    try {
+      const history = await getAllLocalImages();
+      setLocalHistory(history.sort((a, b) => b.timestamp - a.timestamp));
+    } catch (err) {
+      console.error('Failed to load local history:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const handleImageUpload = async (files: File[]) => {
     const newImageStates: ImageState[] = files.map(file => ({
-      id: `${file.name}-${file.lastModified}`,
+      id: `${file.name}-${file.lastModified}-${Math.random()}`,
       file,
       status: 'loading',
-      originalDataUrl: '', // Will be populated after reading
+      originalDataUrl: '', 
     }));
     setImages(prev => [...prev, ...newImageStates]);
     setSummary(null);
 
-    startProcessing(async () => {
+    // Save to local storage
+    files.forEach(async (file) => {
+      try {
+        await saveImageLocally(file);
+        loadHistory();
+      } catch (err) {
+        console.error('Failed to save locally:', err);
+      }
+    });
+
+    setIsProcessing(true);
+    try {
       const processingPromises = newImageStates.map(async imageState => {
         try {
           let fileToProcess = imageState.file;
@@ -134,10 +161,12 @@ export function ImageProcessor() {
         }
       });
       await Promise.all(processingPromises);
-    });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleGenerateSummary = () => {
+  const handleGenerateSummary = async () => {
     const successfulResults = images
       .filter(img => img.status === 'done' && img.result)
       .map(img => ({
@@ -155,32 +184,118 @@ export function ImageProcessor() {
       return;
     }
 
-    startSummaryLoading(async () => {
-      try {
-        const summaryResult = await getSummary(successfulResults);
-        setSummary(summaryResult);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'An unknown error occurred.';
-        toast({
-          variant: 'destructive',
-          title: 'Summary Generation Failed',
-          description: errorMessage,
-        });
-      }
-    });
+    setIsSummaryLoading(true);
+    try {
+      const summaryResult = await getSummary(successfulResults);
+      setSummary(summaryResult);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Summary Generation Failed',
+        description: errorMessage,
+      });
+    } finally {
+      setIsSummaryLoading(false);
+    }
   };
 
   const hasSuccessfulResults = images.some(img => img.status === 'done');
+
+  const handleDeleteHistoryItem = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await deleteLocalImage(id);
+      loadHistory();
+      toast({
+        title: "Deleted",
+        description: "Image removed from local storage.",
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete image.",
+      });
+    }
+  };
+
+  const handleUseFromHistory = (item: LocalImage) => {
+    const file = new File([item.blob], item.name, { type: item.type });
+    handleImageUpload([file]);
+  };
 
   return (
     <div id="image-processor" className="w-full py-12 lg:py-20">
       <div className="container max-w-6xl mx-auto space-y-12 px-4">
         <div className="max-w-3xl mx-auto space-y-8">
-          <SymptomSelector
-            selectedSymptoms={selectedSymptoms}
-            onSelectedSymptomsChange={setSelectedSymptoms}
-          />
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <SymptomSelector
+              selectedSymptoms={selectedSymptoms}
+              onSelectedSymptomsChange={setSelectedSymptoms}
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-2 shrink-0"
+            >
+              <History className="h-4 w-4" />
+              {showHistory ? 'Hide Local Storage' : 'View Local Storage'}
+            </Button>
+          </div>
+
+          {showHistory && (
+            <Card className="border-dashed border-2 bg-muted/30">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <History className="h-5 w-5 text-primary" />
+                    Local Device Storage
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Photos are saved only on this browser.</p>
+                </div>
+                
+                {localHistory.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background">
+                    <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-20" />
+                    <p className="text-muted-foreground">No images stored locally yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[400px] overflow-y-auto pr-2">
+                    {localHistory.map((item) => {
+                      const url = URL.createObjectURL(item.blob);
+                      return (
+                        <div key={item.id} className="group relative aspect-square rounded-lg overflow-hidden border bg-background shadow-sm hover:ring-2 hover:ring-primary transition-all cursor-pointer" onClick={() => handleUseFromHistory(item)}>
+                          <img 
+                            src={url} 
+                            alt={item.name} 
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="text-white text-xs font-medium">Use Photo</span>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDeleteHistoryItem(e, item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-white p-1 truncate">
+                            {new Date(item.timestamp).toLocaleDateString()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <ImageUploader onUpload={handleImageUpload} disabled={isProcessing} />
         </div>
 
