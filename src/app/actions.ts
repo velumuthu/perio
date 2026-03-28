@@ -17,19 +17,26 @@ export async function processImage(
 ): Promise<ClassificationResult> {
   const maxRetries = 3;
   const retryDelayMs = 2000; // 2 seconds
-  let lastError;
+  let lastError: unknown;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const classificationResult: ClassifyPatientDetailsOutput =
+      const classificationResult =
         await classifyPatientDetails({ photoDataUri, symptoms });
       return {
         ...classificationResult,
+        otherIssuesDescription: classificationResult.otherIssuesDescription ?? undefined,
         name: fileName,
-      };
+      } as ClassificationResult;
     } catch (error) {
       lastError = error;
-      // Check for Gemini 503 error
       const message = error instanceof Error ? error.message : String(error);
+
+      // Handle custom validation errors (no retry, specific message)
+      if (message === 'upload the teeth images only') {
+        throw new Error(message);
+      }
+
+      // Check for Gemini 503 error
       if (
         message.includes('503') ||
         message.includes('model is overloaded') ||
